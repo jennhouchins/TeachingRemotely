@@ -1,0 +1,502 @@
+---
+title: "A Case Study of Participant Feedback for a Teaching Remotely Professional Learning Course"
+author: "Jennifer Houchins"
+date: '`r format(Sys.time(), "%B %d, %Y")`'
+output: 
+  rmdformats::readthedown:
+    self_contained: true
+    lightbox: true
+    gallery: false
+    highlight: default
+    code_folding: hide
+    code_download: true
+    embed_fonts: true
+    use_bookdown: false
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libraries, include=FALSE}
+# devtools::install_github("gaospecial/wordcloud2")
+library(tidyverse)
+library(tidyr)
+library(tidytext) 
+library(plyr)
+library(dplyr)
+library(wordcloud2) 
+library(htmlwidgets)
+library(webshot)
+library(forcats)
+library(remotes)
+library(ggplot2)
+library(ggwordcloud)
+library(kableExtra)
+library(fontawesome)
+library(vader)
+set.seed(2004)
+```
+
+# Context of this Case Study
+
+The data source for my final project consists of the end of course survey responses for the "Teaching Remotely: A Practical Guide" 2020 MOOC-Ed course offered by the Friday Institute for Educational Innovation. This professional learning course was offered to help educators address the key issues of transitioning to Emergency Remote Learning due to the COVID-19 global pandemic. The course objectives covered key professional development areas for teaching remotely such as establishing norms for remote learning, bring social-emotional learning to the virtual classroom, maintaining connections with student and families, digital content selection, supporting learners with special needs, and providing quality feedback. You can read more about the course on the Friday Institute's [Professional Learning and Collaboration Environment course site](https://place.fi.ncsu.edu/local/catalog/course.php?id=24&ref=1).
+
+The raw data includes 3,080 end of course survey responses where participants provided their ratings for overall effectiveness of the course, their perceived effectiveness of particular aspects of the course, their estimated number of hours spent engaged in the course activities, and their ratings for how effectively the course improved their practice. The main focus of my project for this course will be the open-ended, unstructured text responses that participants provided in answer to the following questions:
+
+- What was the most valuable aspect of this course in supporting your personal or professional learning goals?
+
+- In what ways, if any, do you anticipate applying the knowledge, skills, and/or resources you acquired from this course to your professional practice?
+
+- Please describe any changes you have made to your practice, including how you have applied the knowledge, skills, and/or resources you gained in this course.
+
+- What recommendations do you have for making this course more valuable to future participants (e.g., other resources, additional features, activities, etc.)? Please explain.
+
+## Guiding Questions
+
+I am interested in this data/context because I am heavily involved in developing educator professional development and this analysis may help guide such development. In particular, my guiding questions for this case study will be:
+
+1. What aspects of the Teaching Remotely professional development course do participants find most valuable?
+
+2. What changes, if any, are being made to participants' practice as a result of their participation in this course?
+
+3. If participants found the course to be ineffective, what specific recommendations have they made for its improvement?
+
+4. How do the sentiments of participants' open-ended responses compare to their ratings of the course's overall effectiveness?
+
+## Target Audience
+
+My target audience is any other researcher or teacher educator who, like myself, is interested in making improvements to their own professional development offerings. I hope that the analysis will help identify "best practices" by examining the components of professional learning that are most valuable as well as specific areas that could be targeted for improvement.
+
+## Limitations of this Case Study
+
+Before diving into the analysis of this data, it is important to note that responses to the end of course survey were voluntary. Therefore, it is possible that those participants who did not complete all of the activities or that found the course to be ineffective did not respond to the end of course survey. Examining the data does show that the ratings for overall effectiveness of the course is skewed very positively which confirms that a key limitation for this case study lies in the response rates for those participants who only completed a portion of the course or were dissatisfied with the course content in some manner.  
+
+# End of Course Survey Analysis
+
+In the following sections, the processes used to analyze the end of course survey data are described and findings are presented.
+
+## Data Wrangling
+
+My initial pre-processing of the data began with removing some HTML formatting that appears in text responses and setting column names that are more readable than those assigned by the survey system. I chose not to omit **_NA_** values at this point simply because there was at least one in every response and that resulted in no data left to analyze! Instead, I omit the **_NA_** values at appropriate points throughout my analysis. Additionally, since some cursory exploration of the data showed that participants made mention of specific unit numbers, I also chose not to remove numbers/digits from the text responses when I pre-processed the data. The following shows the clean column names and a glimpse of the data contained in the end of course survey responses.
+
+```{r get-data, cache=TRUE, warning=FALSE, results='hide', message=FALSE}
+eoc_survey_data <- read_csv("data/eoc_surveydata_wrangled_grouped.csv") %>% 
+  select(response,
+         EffectivenessRating,
+         IntroDiscussionRating,
+         CourseContentRating,
+         PuttingItTogetherRating,
+         ActionPlanRating,
+         ResourcesRating,
+         MostValuableAspects,
+         ImprovementEstablishingNorms,
+         ImprovementBringingSEL,
+         ImprovementMaintainingConnection,
+         ImprovementSelectDigResources,
+         ImprovementSupportSpecialPop,
+         ImprovementProvidingFeedback,
+         PositiveChangesEffectiveness,
+         HasAttemptedChanges,
+         AnticipatedApplicationPractice,
+         ChangesToPractice,
+         CourseRecommendations,
+         DesiredActivityCompletion,
+         CourseHoursEstimate,
+         text) %>% 
+  mutate(CourseHoursEstimate = as.factor(CourseHoursEstimate)) %>% 
+  mutate(CourseCompletion = as.factor(ifelse(DesiredActivityCompletion == 0, "incomplete", "complete"))) %>% 
+  filter(response != 87684,
+         response != 89417)
+```
+
+```{r sneakpeak}
+glimpse(eoc_survey_data)
+```
+
+As you will notice, two of the survey responses were discarded due to corrupted character encodings within the text responses. I believe this may have been due to participants copying and pasting material into their responses. The following sections present my analysis of the Teaching Remotely MOOC-ED end of course survey responses arranged by the guiding questions that frame the case study.
+
+## Most Valuable Aspects
+
+The first guiding question for my analysis is:
+
+**What aspects of the Teaching Remotely professional development course do participants find most valuable?**
+
+Based on the nature of the responses, which are pretty short, the text was tokenized and stop words were removed. Since the responses contained some HTML from the survey system, custom stop words were also employed for the tokenization process (e.g., "nbsp" or "amp"). It should be noted that some of the MOOC-Ed participants chose not to respond to the survey question: "What was the most valuable aspect of this course in supporting your personal or professional learning goals?" Therefore, I had to do some further pre-processing at this stage and omit any **_NA_** values that were lurking in the data.
+
+```{r aspects, cache=TRUE, warning=FALSE, message=FALSE}
+eoc_aspects <- eoc_survey_data %>%
+  select(response, MostValuableAspects) %>%
+  slice(-1, -2) %>%
+  na.omit()
+
+eoc_aspects %>% 
+  select(MostValuableAspects)
+```
+
+Custom stop words were employed for the leftover HTML that crept into the responses (e.g., nbsp or amp) and for words that were simply a restating of the survey prompt (e.g., valuable and aspect) as part of the response.
+
+```{r tokenize, cache=TRUE, warning=FALSE, message=FALSE}
+custom_stop <- data.frame("word" = c("nbsp",
+                                     "amp",
+                                     "NA",
+                                     "N/A",
+                                     "N/a",
+                                     "Na", 
+                                     "na",
+                                     "aspect", 
+                                     "valuable"))
+
+eoc_tidy_aspects <- eoc_aspects %>% 
+  unnest_tokens(word, MostValuableAspects) %>%
+  anti_join(stop_words) %>% 
+  anti_join(custom_stop)
+```
+
+Below you can see the words that appear in the question responses at least 150 times. Resources is at the top of the list, but ignoring some words like helped or helpful there are others that stand out such as ideas, links, videos, articles, feedback, and discussion.
+
+```{r tokenplot}
+eoc_tidy_aspects %>% 
+  dplyr::count(word, sort = TRUE) %>% 
+  filter(n > 150) %>% 
+  mutate(word = reorder(word, n)) %>% 
+  ggplot(aes(n, word)) + 
+  geom_col() + 
+  labs(y = NULL)
+```
+
+```{r token-counts, cache=TRUE, warning=FALSE, message=FALSE, include=FALSE}
+token_counts_aspects <-  eoc_tidy_aspects %>% 
+  dplyr::count(word, sort = TRUE)
+
+eoc_word_counts_aspects <- eoc_tidy_aspects %>%
+  dplyr::count(response, word, sort = TRUE) %>%
+  mutate(proportion = n / sum(n))
+
+eoc_word_counts_aspects
+
+total_words <- eoc_word_counts_aspects %>%
+  group_by(response) %>% 
+  summarise(total = sum(n))
+
+eoc_word_totals <- left_join(eoc_word_counts_aspects, total_words, by = character())
+
+eoc_word_totals
+```
+
+It was at this point that I decided to examine bigrams for this question. As you can see in the bar chart, some of the most frequently used words are plan and unit. These often appear in the responses as part of phrases, such as "action plan" or "unit 3" and I hoped to capture more specific valuable aspects of the MOOC-Ed such as these if at all possible.
+
+```{r bigrams-counts, cache=TRUE, warning=FALSE, message=FALSE}
+eoc_aspects_bigrams <- eoc_aspects %>%
+  unnest_ngrams(bigram, MostValuableAspects, n = 2, to_lower = TRUE) 
+
+eoc_separated_aspects <- eoc_aspects_bigrams %>%  
+  separate(bigram, into = c("word1", "word2"), sep = " ") %>% 
+  na.omit()
+
+eoc_united_aspects <- eoc_separated_aspects %>%
+  filter(!(word1 %in% stop_words$word), 
+         !(word2 %in% stop_words$word)) %>%  
+  filter(!(word1 %in% custom_stop$word), 
+         !(word2 %in% custom_stop$word)) %>%
+  unite(bigram, c(word1, word2), sep = " ")
+
+bigram_counts_aspects <- eoc_united_aspects %>%
+  dplyr::count(bigram, sort = TRUE) %>%
+  top_n(25)
+
+```
+
+As you can see from the word cloud below, examining the bigrams was actually fruitful. It revealed that aspects like "action plan", "learning goals", "unit 5", and "unit 6" were mentioned quite frequently by those who responded to the end of course survey. It also revealed other key content like "social emotional", "special education", "establishing norms" and "digital citizenship".
+
+```{r wordcloud-aspects, message=FALSE, warning=FALSE, fig.align='center'}
+wordcloud2(bigram_counts_aspects, size = 2, shape='circle', color='black')
+```
+
+## Changes to Practice
+
+The second guiding question for my analysis is:
+
+**What changes, if any, are being made to participants' practice as a result of their participation in this course?**
+
+Answering this question focuses in on the following two survey questions:
+
+- In what ways, if any, do you anticipate applying the knowledge, skills, and/or resources you acquired from this course to your professional practice?
+- Please describe any changes you have made to your practice, including how you have applied the knowledge, skills, and/or resources you gained in this course.
+
+Responses to these questions were captured in the dataframe columns called **AnticipatedApplicationPractice** and **ChangesToPractice**. Let's first focus on the changes that participants anticipated making to their practice. We'll just grab the **AnticipatedApplicationPractice** column from our dataframe and do some further pre-processing by stripping out lingering HTML tags and responses where the participants just wrote some variant of "N/A."
+
+```{r anticipated-app, cache=TRUE, warning=FALSE, message=FALSE}
+anticipated_changes <- eoc_survey_data %>%
+  select(response, AnticipatedApplicationPractice) %>%
+  mutate(AnticipatedApplicationPractice = gsub('&nbsp;', ' ', AnticipatedApplicationPractice)) %>% 
+  mutate(AnticipatedApplicationPractice = gsub('&amp;', ' ', AnticipatedApplicationPractice)) %>%
+  slice(-1, -2) %>%
+  na.omit() %>% 
+  filter(AnticipatedApplicationPractice != 'N/A')
+
+anticipated_changes %>% 
+  select(AnticipatedApplicationPractice)
+```
+
+There are only 78 responses to this survey question about anticipated changes to participants' professional practice, so we'll just grab a sampling of those to examine them for any patterns. In particular, we will target the responses that specifically mention a participant's "plan" and grab ten of those to read more closely.
+
+```{r anticipation-snapshot, cache=TRUE, warning=FALSE, message=FALSE}
+changes_quotes <- anticipated_changes %>%
+  select(AnticipatedApplicationPractice) %>% 
+  filter(grepl('plan', AnticipatedApplicationPractice))
+
+sample_changes <- sample_n(changes_quotes, 10)
+```
+
+```{r show-anticipated, cache=TRUE, warning=FALSE, message=FALSE}
+kable(sample_changes)
+```
+
+Even with just this handful of responses, we can see that participants plan to: 1) establish norms and provide social-emotional learning (SEL) through relationship-building activities in their virtual classrooms; 2) maintain effective communication with students and their families; 3) and share the content they learned with colleagues. Since some of these are learning objectives for the MOOC-Ed Teaching Remotely course, these responses appear to indicate that participants can envision how the course content aligns with and how they can apply it to their own professional practice.
+
+Now that we have seen how participants anticipate applying the course content, let's examine the changes they indicate they have already made to their practice. In this case, we'll concentrate on the **ChangesToPractice** column of our dataframe.
+
+```{r practice-changes, cache=TRUE, message=FALSE, warning=FALSE}
+practice_changes <- eoc_survey_data %>%
+  select(response, ChangesToPractice) %>%
+  mutate(ChangesToPractice = gsub('&nbsp;', ' ', ChangesToPractice)) %>% 
+  mutate(ChangesToPractice = gsub('&amp;', ' ', ChangesToPractice)) %>%
+  slice(-1, -2) %>%
+  na.omit() %>% 
+  filter(ChangesToPractice != 'N/A')
+
+practice_changes %>% 
+  select(ChangesToPractice)
+```
+
+Looking at the tokenized responses to this survey question reveals that participants will focus changes to their practice on students, resources, feedback, norms, and SEL. They also frequently mention tools, planning, assessment, and communication. 
+
+```{r changes-tokens, cache=TRUE, message=FALSE, warning=FALSE}
+eoc_tidy_changes <- practice_changes %>% 
+  unnest_tokens(word, ChangesToPractice) %>%
+  anti_join(stop_words)
+
+eoc_tidy_changes %>% 
+  dplyr::count(word, sort = TRUE) %>% 
+  filter(n > 150) %>% 
+  mutate(word = reorder(word, n)) %>% 
+  ggplot(aes(n, word)) + 
+  geom_col() + 
+  labs(y = NULL)
+```
+
+Since these unigrams only convey where participants will focus their changes to practice, I decided to also examine bigrams here to get a clearer picture of the changes participants have made to their classroom practices.
+
+```{r change-bigrams, cache=TRUE, message=FALSE, warning=FALSE}
+
+eoc_changes_bigrams <- practice_changes %>%
+  unnest_ngrams(bigram, ChangesToPractice, n = 2, to_lower = TRUE) 
+
+eoc_separated_changes <- eoc_changes_bigrams %>%  
+  separate(bigram, into = c("word1", "word2"), sep = " ") %>% 
+  na.omit()
+
+eoc_united_changes <- eoc_separated_changes %>%
+  filter(!(word1 %in% stop_words$word), 
+         !(word2 %in% stop_words$word)) %>%
+  unite(bigram, c(word1, word2), sep = " ")
+
+token_counts_changes <-  eoc_tidy_changes %>% 
+  dplyr::count(word, sort = TRUE)
+
+bigram_counts_changes <- eoc_united_changes %>% 
+  dplyr::count(bigram, sort = TRUE) %>% 
+  top_n(25)
+```
+
+```{r wordcloud-changes, fig.align='center'}
+wordcloud2(bigram_counts_changes, size = 2, shape = 'circle', color = 'black')
+```
+<br /><br />
+The top 25 bigrams shown in the word cloud above suggest that participants have already made changes to their professional practice that include establishing norms, holding office hours, making an action plan or lesson plans, check ins, providing feedback, and using Google Classroom. However, many of the bigrams imply the same changes with different wordings, such as "providing feedback" and "provide feedback" or "virtual learning" and "online learning." This suggests that future analyses may benefit from stemming.
+
+## Recommendations for Improvement
+
+The next guiding question for this case study deals with participants' recommendations for course improvements: 
+
+**If participants found the course to be ineffective, what specific recommendations have they made for its improvement?**
+
+Specifically, it focuses on the responses from participants who rated the overall effectiveness of the course as "Neither effective nor ineffective", "ineffective", or "very ineffective." The response text comes from the **CourseRecommendations** column of the dataframe.
+
+```{r get-recs}
+participant_recommendations <- eoc_survey_data %>%
+  select(response, EffectivenessRating, CourseRecommendations) %>%
+  mutate(CourseRecommendations = gsub('&nbsp;', ' ', CourseRecommendations)) %>% 
+  mutate(CourseRecommendations = gsub('&amp;', ' ', CourseRecommendations)) %>%
+  slice(-1, -2) %>%
+  na.omit() %>% 
+  filter(CourseRecommendations != 'N/A', 
+         CourseRecommendations != 'n/a',
+         EffectivenessRating >= 3)
+
+participant_recommendations %>% 
+  select(EffectivenessRating, CourseRecommendations)
+```
+ 
+```{r token-recs, message=FALSE, warning=FALSE}
+recs_stop <- data.frame("word" = c("n/a", "N/A", "N/a"))
+
+eoc_tidy_recs <- participant_recommendations %>%
+  unnest_tokens(word, CourseRecommendations) %>%
+  anti_join(stop_words) %>% 
+  anti_join(recs_stop)
+
+eoc_tidy_recs %>% 
+  dplyr::count(word, sort = TRUE) %>% 
+  filter(n > 2) %>% 
+  mutate(word = reorder(word, n)) %>% 
+  ggplot(aes(n, word)) + 
+  geom_col() + 
+  labs(y = NULL) 
+```
+ 
+After tokenization, the words most frequently used in response to the survey question "What recommendations do you have for making this course more valuable to future participants?" are words like videos, time, teachers, resources. In fact, on the whole the tokenized text closely resembles the results from examining the other text responses. Therefore, a closer look into the raw data may be helpful. We'll grab a sampling of the responses from the ratings of "Neither effective nor ineffective", "ineffective", or "very ineffective" and read through them.
+
+```{r sample-recs}
+recs_quotes <- participant_recommendations %>% 
+  select(response, EffectivenessRating, CourseRecommendations) %>% 
+  filter(EffectivenessRating >= 3,
+         CourseRecommendations != 'none',
+         CourseRecommendations != 'N/a')
+
+sample_neutral <- recs_quotes %>% 
+  filter(EffectivenessRating == 3) %>% 
+  sample_n(5) %>% 
+  select(CourseRecommendations)
+
+sample_ineffective <- recs_quotes %>% 
+  filter(EffectivenessRating == 4) %>% 
+  select(CourseRecommendations)
+
+sample_veryineffective <- recs_quotes %>% 
+  filter(EffectivenessRating == 5) %>% 
+  sample_n(5) %>% 
+  select(CourseRecommendations)
+  
+sample_recs <- rbind(sample_neutral, sample_ineffective, sample_veryineffective)
+
+kable(sample_recs)
+```
+
+Reading through these results, some key issues are highlighted in these responses. For example, multiple participants in this sample suggests a lack of course content addressing remote teaching strategies for supporting students with disabilities. Other responses suggest that the course needed more interaction between participants or that course content was too long and/or repetitive. However, and perhaps somewhat surprisingly, some responses suggest that the course is sufficient and very valuable despite low overall effectiveness ratings. Thus, the next step in this case study will be to perform sentiment analysis on the participants' text responses and compare that to the overall effectiveness ratings that participants gave to the course.
+
+## Participants' Sentiments Compared to Course Ratings
+
+The final guiding question for this study is:
+
+**How do the sentiments of participants' open-ended responses compare to their ratings of the course's overall effectiveness?**
+
+To answer this question, the response text of all three open-ended survey items was combined into a single text entry for each survey response. Additionally, participants' ratings for the course's overall effectiveness were adapted from the 5-point Likert scale (*very effective* to *very ineffective*) to a 3-point sentiment scale. That is, ratings of *very effective* and *effective* were collapsed to represent *positive* sentiment, *neither effective nor ineffective* represents a *neutral* sentiment, and *very ineffective* and *ineffective* were collapsed to represent a *negative* sentiment. Then proportions of the resulting course rating sentiments were calculated to make comparison to the results of sentiment analysis using the [Valence Aware Dictionary and sEntiment Reasoner (VADER) package](https://cran.r-project.org/web/packages/vader/index.html).
+
+```{r course-ratings, cache=TRUE, message=FALSE, warning=FALSE}
+courseRatings_results <- eoc_survey_data %>%
+  mutate(sentiment = ifelse(EffectivenessRating == 5, "negative",
+                        ifelse(EffectivenessRating == 4, "negative",
+                               ifelse(EffectivenessRating == 3, "neutral",
+                                      ifelse(EffectivenessRating == 2, "positive", "positive"))))) %>%
+  dplyr::count(sentiment, sort = TRUE) %>%
+  na.omit() %>% 
+  mutate(proportion = n / sum(n)) %>% 
+  mutate(lexicon = "Participant Rating Sentiment") 
+
+courseRatings_results
+```
+ 
+```{r vader-sentiments, cache=TRUE, message=FALSE, warning=FALSE}
+survey_resp_text <- eoc_survey_data
+
+summary_vader <- vader::vader_df(survey_resp_text$text) %>% 
+  select(text, compound, pos, neg, neu)
+
+vader_results <- summary_vader %>%
+  mutate(sentiment = ifelse(compound > 0, "positive",
+                            ifelse(compound < 0, "negative", "neutral"))) %>%
+  dplyr::count(sentiment, sort = TRUE) %>%
+  na.omit() %>%
+  mutate(proportion = n / sum(n)) %>%
+  mutate(lexicon = "Vader Sentiment")
+
+vader_results
+```
+
+As you can see from the results below, the sentiment analysis of the open-ended responses appears to align with the sentiments of participants' course ratings. This is despite some results above where participants rated the course to be *ineffective* or *neither effective nor ineffective* but stated that they liked the course as if and would not recommend changes. 
+
+```{r sentiment-comparison, cache=TRUE, message=FALSE, warning=FALSE}
+comparison_df <- rbind(vader_results, courseRatings_results)
+
+ggplot(comparison_df, aes(x = sentiment, y = proportion, fill = sentiment)) +
+  geom_col() +
+  facet_grid(. ~ lexicon) +
+  theme_minimal() +
+  theme(legend.position="none") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  xlab("Sentiment") +
+  ylab("Proportion") +
+  ggtitle("Sentiment Comparison of Participants' Ratings and Vader Analysis Results")
+```
+
+For a deeper look at participants' sentiments as expressed through their text responses, I also decided to use the **NRC** sentiment lexicon to examine the range of emotions expressed across the survey responses. The results of this analysis are shown below.
+
+```{r nrc-sentiments, cache=TRUE, message=FALSE, warning=FALSE}
+nrc <- get_sentiments("nrc")
+
+survey_stop <- data.frame("word" = c("nbsp", "NA", "N/A", "n/a", "na", "amp"))
+
+participant_tokens <- eoc_survey_data %>%
+  select(response, text) %>%
+  unnest_tokens(word, text) %>%
+  anti_join(stop_words) %>%
+  anti_join(survey_stop)
+
+sentiment_nrc <- inner_join(participant_tokens, nrc, by = "word")
+
+summary_nrc <- sentiment_nrc %>%
+  dplyr::count(sentiment, sort = TRUE) %>%
+  spread(sentiment, n) %>%
+  mutate(lexicon = "nrc") %>%
+  relocate(lexicon) %>% 
+  select(anger, anticipation, disgust, fear, joy, sadness, surprise, trust)
+
+kable(summary_nrc)
+```
+
+As you can see, participants' most frequently exhibited trust in their responses along with anticipation and joy. The least frequent emotions exhibited were anger and disgust. Again, these results support that of those participants who responded to the end of course survey, overall satisfaction with the course content was skewed very positively.
+
+Since the course ratings and sentiments are skewed so positively and a stated limitation of this data is a potentially low response rate for those who did not complete the course activities, we'll examine the proportion of responses that indicate participants' ability to complete all the activities they wanted to complete during the course.
+
+```{r course-completion}
+
+courseCompletion_results <- eoc_survey_data %>% 
+  select(CourseCompletion) %>% 
+  dplyr::count(CourseCompletion, sort = TRUE) %>%
+  mutate(proportion = n / sum(n))
+
+kable(courseCompletion_results)
+
+```
+As you can see in the table above, approximately 4 percent of the responses were from participants who were unable to complete all of the course activities as they desired. This may explain why the sentiment results are skewed so positively. 
+
+# Discussion
+
+Despite the short amount of text provided by the participants' responses to the open-ended questions on the end of course surveys, there are still key insights to be gained that will aid refinements to our professional learning MOOC-Ed course on Teaching Remotely. In particular, some highlights from the analysis are:
+
+- Participants found content such as action plans, learning goals, unit 5, and unit 6 to be particularly valuable aspects of the course.
+- Participants expressed clear plans for applying course content to their own professional practice and are already doing so with practices such as establishing norms for their virtual classrooms, holding office hours and check ins, providing feedback, and using Google Classroom.
+- Course content may benefit from identifying redundant material in an effort to shorten time spent, including more participant peer interaction, or adding content that addressing remote teaching supports/resources for those with students who have special needs, such as students with disabilities.
+- On the whole, course ratings were very positive and the sentiments expressed by participants written responses agreed with these ratings.
+
+Despite gaining these very useful insights from the end of course survey responses, we should consider that some insights may be missing due to the low response rates for those who were unable to complete the course. Finally, the results suggest that further text mining analysis may benefit from stemming the tokenized data.
+
+# The Author
+
+![](jenn.jpg){width="145px" style="float: left; margin-right: 30px; margin-top: 5px;"}
+
+Jennifer Houchins is a doctoral candidate in Learning Design and Technology at North Carolina State University. Her research examines students' use of computational thinking and the effective use of instructional technology to deepen conceptual understanding in both formal and informal K-12 learning environments. She currently a graduate research assistant for the [InfuseCS project](http://projects.intellimedia.ncsu.edu/infusecs/), the [Programmed Robotics in the School Makerspace (PRISM) project](https://programmedrobotics.weebly.com/), and the [Friday Institute's Program Evaluation and Education Research (PEER) Group](https://www.fi.ncsu.edu/teams/peer/).
+
+*You can learn more about Jennifer and her work by [visiting her website](https://jenniferkhouchins.com). You can also follow her on `r fontawesome::fa_i('twitter')` [@TooSweetGeek](https://twitter.com/TooSweetGeek).* 

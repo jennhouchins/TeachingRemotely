@@ -161,7 +161,8 @@ eoc_tidy_aspects %>%
   filter(n > 150) %>% 
   mutate(word = reorder(word, n)) %>% 
   ggplot(aes(n, word)) + 
-  geom_col() + 
+  theme_minimal() +
+  geom_col(fill="#7B0D1E") + 
   labs(y = NULL)
 ```
 
@@ -210,7 +211,7 @@ bigram_counts_aspects <- eoc_united_aspects %>%
 As you can see from the word cloud below, examining the bigrams was actually fruitful. It revealed that aspects like "action plan", "learning goals", "unit 5", and "unit 6" were mentioned quite frequently by those who responded to the end of course survey. It also revealed other key content like "social emotional", "special education", "establishing norms" and "digital citizenship".
 
 ```{r wordcloud-aspects, message=FALSE, warning=FALSE, fig.align='center'}
-wordcloud2(bigram_counts_aspects, size = 2, shape='circle', color='black')
+wordcloud2(bigram_counts_aspects, size = 2, shape='circle', color='#7B0D1E')
 ```
 
 ## Changes to Practice
@@ -282,7 +283,8 @@ eoc_tidy_changes %>%
   filter(n > 150) %>% 
   mutate(word = reorder(word, n)) %>% 
   ggplot(aes(n, word)) + 
-  geom_col() + 
+  theme_minimal() +
+  geom_col(fill="#7B0D1E") + 
   labs(y = NULL)
 ```
 
@@ -311,7 +313,7 @@ bigram_counts_changes <- eoc_united_changes %>%
 ```
 
 ```{r wordcloud-changes, fig.align='center'}
-wordcloud2(bigram_counts_changes, size = 2, shape = 'circle', color = 'black')
+wordcloud2(bigram_counts_changes, size = 2, shape = 'circle', color = '#7B0D1E')
 ```
 <br /><br />
 The top 25 bigrams shown in the word cloud above suggest that participants have already made changes to their professional practice that include establishing norms, holding office hours, making an action plan or lesson plans, check ins, providing feedback, and using Google Classroom. However, many of the bigrams imply the same changes with different wordings, such as "providing feedback" and "provide feedback" or "virtual learning" and "online learning." This suggests that future analyses may benefit from stemming.
@@ -322,7 +324,7 @@ The next guiding question for this case study deals with participants' recommend
 
 **If participants found the course to be ineffective, what specific recommendations have they made for its improvement?**
 
-Specifically, it focuses on the responses from participants who rated the overall effectiveness of the course as "Neither effective nor ineffective", "ineffective", or "very ineffective." The response text comes from the **CourseRecommendations** column of the dataframe.
+Specifically, it focuses on the responses from participants who rated the overall effectiveness of the course as **Neither effective nor ineffective**, **ineffective**, or **very ineffective**. The response text comes from the **CourseRecommendations** column of the dataframe.
 
 ```{r get-recs}
 participant_recommendations <- eoc_survey_data %>%
@@ -352,11 +354,12 @@ eoc_tidy_recs %>%
   filter(n > 2) %>% 
   mutate(word = reorder(word, n)) %>% 
   ggplot(aes(n, word)) + 
-  geom_col() + 
+  theme_minimal() +
+  geom_col(fill="#7B0D1E") + 
   labs(y = NULL) 
 ```
  
-After tokenization, the words most frequently used in response to the survey question "What recommendations do you have for making this course more valuable to future participants?" are words like videos, time, teachers, resources. In fact, on the whole the tokenized text closely resembles the results from examining the other text responses. Therefore, a closer look into the raw data may be helpful. We'll grab a sampling of the responses from the ratings of "Neither effective nor ineffective", "ineffective", or "very ineffective" and read through them.
+After tokenization, the words most frequently used in response to the survey question "What recommendations do you have for making this course more valuable to future participants?" are words like videos, time, teachers, resources. In fact, on the whole the tokenized text closely resembles the results from examining the other text responses. Therefore, a closer look into the raw data may be helpful. We'll grab a sampling of the responses from the ratings of **Neither effective nor ineffective**, **ineffective**, or **very ineffective** and read through them.
 
 ```{r sample-recs}
 recs_quotes <- participant_recommendations %>% 
@@ -392,7 +395,7 @@ The final guiding question for this study is:
 
 **How do the sentiments of participants' open-ended responses compare to their ratings of the course's overall effectiveness?**
 
-To answer this question, the response text of all three open-ended survey items was combined into a single text entry for each survey response. Additionally, participants' ratings for the course's overall effectiveness were adapted from the 5-point Likert scale (*very effective* to *very ineffective*) to a 3-point sentiment scale. That is, ratings of *very effective* and *effective* were collapsed to represent *positive* sentiment, *neither effective nor ineffective* represents a *neutral* sentiment, and *very ineffective* and *ineffective* were collapsed to represent a *negative* sentiment. Then proportions of the resulting course rating sentiments were calculated to make comparison to the results of sentiment analysis using the [Valence Aware Dictionary and sEntiment Reasoner (VADER) package](https://cran.r-project.org/web/packages/vader/index.html).
+To answer this question, the response text of all three open-ended survey items was combined into a single text entry for each survey response. Additionally, participants' ratings for the course's overall effectiveness were adapted from the 5-point Likert scale (**very effective** to **very ineffective**) to a 3-point sentiment scale. That is, ratings of **very effective** and **effective** were collapsed to represent **positive** sentiment, **neither effective nor ineffective** represents a **neutral** sentiment, and **very ineffective** and **ineffective** were collapsed to represent a **negative** sentiment. Then proportions of the resulting course rating sentiments were calculated to make comparison to the results of sentiment analysis using the [Valence Aware Dictionary and sEntiment Reasoner (VADER) package](https://cran.r-project.org/web/packages/vader/index.html).
 
 ```{r course-ratings, cache=TRUE, message=FALSE, warning=FALSE}
 courseRatings_results <- eoc_survey_data %>%
@@ -425,7 +428,7 @@ vader_results <- summary_vader %>%
 vader_results
 ```
 
-As you can see from the results below, the sentiment analysis of the open-ended responses appears to align with the sentiments of participants' course ratings. This is despite some results above where participants rated the course to be *ineffective* or *neither effective nor ineffective* but stated that they liked the course as if and would not recommend changes. 
+As you can see from the results below, the sentiment analysis of the open-ended responses appears to align with the sentiments of participants' course ratings. This is despite some results above where participants rated the course to be **ineffective** or **neither effective nor ineffective** but stated that they liked the course as if and would not recommend changes. 
 
 ```{r sentiment-comparison, cache=TRUE, message=FALSE, warning=FALSE}
 comparison_df <- rbind(vader_results, courseRatings_results)

@@ -511,6 +511,10 @@ Jennifer Houchins is a doctoral candidate in Learning Design and Technology at N
 
 *You can learn more about Jennifer and her work by [visiting her website](https://jenniferkhouchins.com). You can also follow her on `r fontawesome::fa_i('twitter')` [@TooSweetGeek](https://twitter.com/TooSweetGeek).* 
 
+# Acknowledgements
+
+This project uses techniques from [*Text Mining with R: A Tidy Approach*](https://www.tidytextmining.com/) by Julia Silge and David Robinson. Special thanks to our course instructor, Dr. Shaun Kellogg, for the sense of community created for this course as we all worked to learn R text mining techniques together.
+
 # End of Semester Feels
 
 Bonus Content: This is Jenn. She is happy to be done with this crazy stressful year.

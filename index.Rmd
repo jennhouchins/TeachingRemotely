@@ -37,6 +37,9 @@ library(fontawesome)
 library(vader)
 set.seed(2004)
 ```
+This case study serves as the final project for the ECI 588 Text Mining in Education course offered in spring 2021 at North Carolina State University. This course is part of the Learning Analytics Certificate Program.
+
+The Rmarkdown file can be downloaded from the code folding control button in the upper right hand of this page. The full R Studio project can be access via [this Github repository](https://github.com/jennhouchins/TeachingRemotely). However, it should be noted that the data for this project is not included because it requires special permission for sharing.
 
 # Context of this Case Study
 
@@ -469,9 +472,13 @@ summary_nrc <- sentiment_nrc %>%
 kable(summary_nrc)
 ```
 
-As you can see, participants' most frequently exhibited trust in their responses along with anticipation and joy. The least frequent emotions exhibited were anger and disgust. Again, these results support that of those participants who responded to the end of course survey, overall satisfaction with the course content was skewed very positively.
+As you can see, participants' most frequently exhibited trust in their responses along with anticipation and joy. The least frequent emotions exhibited were anger and disgust. Again, these results support that, of those participants who responded to the end of course survey, overall satisfaction with the course content was skewed very positively.
 
-Since the course ratings and sentiments are skewed so positively and a stated limitation of this data is a potentially low response rate for those who did not complete the course activities, we'll examine the proportion of responses that indicate participants' ability to complete all the activities they wanted to complete during the course.
+Since the course ratings and sentiments are skewed so positively and a stated limitation of this data is a potentially low response rate for those who did not complete the course activities, we'll examine the proportion of responses that indicate participants' ability to complete all the activities they wanted to complete during the course. The survey item that provides the data for this part of the analysis is the yes or no question:
+
+**Were you able to complete all of the activities that you wanted to complete in this course?**
+
+Note here that we are considering a yes response to mean "complete" and a no response to mean "incomplete." 
 
 ```{r course-completion}
 

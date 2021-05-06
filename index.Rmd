@@ -500,3 +500,9 @@ Despite gaining these very useful insights from the end of course survey respons
 Jennifer Houchins is a doctoral candidate in Learning Design and Technology at North Carolina State University. Her research examines students' use of computational thinking and the effective use of instructional technology to deepen conceptual understanding in both formal and informal K-12 learning environments. She currently a graduate research assistant for the [InfuseCS project](http://projects.intellimedia.ncsu.edu/infusecs/), the [Programmed Robotics in the School Makerspace (PRISM) project](https://programmedrobotics.weebly.com/), and the [Friday Institute's Program Evaluation and Education Research (PEER) Group](https://www.fi.ncsu.edu/teams/peer/).
 
 *You can learn more about Jennifer and her work by [visiting her website](https://jenniferkhouchins.com). You can also follow her on `r fontawesome::fa_i('twitter')` [@TooSweetGeek](https://twitter.com/TooSweetGeek).* 
+
+# End of Semester Feels
+
+Bonus Content: This is Jenn. She is happy to be done with this crazy stressful year.
+
+![](https://media.giphy.com/media/pqCxL43whDKzS/giphy.gif)
